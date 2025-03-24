@@ -1,0 +1,57 @@
+trigger:
+- Desarrollo
+
+pool:
+  name: AgenteSatelDev
+
+variables:
+ - group: 'variables_configuracion_desarrollo'
+
+steps:
+
+  - task: NuGetToolInstaller@1
+    inputs:
+      versionSpec: 
+      checkLatest: true
+
+  - task: NuGetCommand@2
+    inputs:
+      command: 'restore'
+      restoreSolution: '$(sln)'
+      feedsToUse: 'select'
+
+  - task: PowerShell@2
+    inputs:
+      targetType: 'inline'
+      script: 'if(Test-Path -Path $(System.DefaultWorkingDirectory)/_build){Remove-item $(System.DefaultWorkingDirectory)/_build -recurse; mkdir _build}else{mkdir _build}'
+
+  - task: CmdLine@2
+    inputs:
+      script: 'npm i --save-dev @types/jquery'
+      workingDirectory: '$(System.DefaultWorkingDirectory)'
+
+#npm i --save-dev @types/jquery
+  - task: replacetokens@6
+    displayName: $(System.DefaultWorkingDirectory)
+    inputs:
+      root: '$(System.DefaultWorkingDirectory)/IBSBranchNet/'
+      sources: 'Web.config'
+      tokenPattern: 'custom'
+      tokenPrefix: '#{'
+      tokenSuffix: '}#'
+      addBOM: true
+      recursive: true
+      telemetryOptout: true
+
+  - task: VSBuild@1
+    inputs:
+      solution: '$(sln)'
+      msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:PackageLocation="$(Build.ArtifactStagingDirectory)" /p:PublishUrl="../_build"'
+      platform: '$(buildPlatform)'
+      configuration: '$(buildConfiguration)'
+      
+  - task: PublishBuildArtifacts@1
+    inputs:
+      PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+      ArtifactName: 'branchArtifactDesarrollo'
+      publishLocation: 'Container'
